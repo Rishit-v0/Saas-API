@@ -1,0 +1,191 @@
+# Name of the workflow — shows up in GitHub Actions tab
+name: CI Pipeline
+
+# Trigger the workflow on push or pull request to the main branch
+on:
+  # Run on every push to main or develop branch
+  push:
+    branches: [ main , develop ]
+  
+  # Run on every pull request targeting main
+  # This catches bugs before merging — critical for team projects
+  pull_request:
+    branches: [ main ]
+
+# Define the jobs to run in this workflow
+jobs:
+
+  # ── JOB 1: Code Quality ─────────────────────────────────────────────────────
+  # A job named 'lint' that runs on the latest Ubuntu environment
+  # ubuntu-latest = free Linux VM — most common choice for CI tasks
+  lint:
+    runs-on: ubuntu-latest
+
+    # Steps to execute in the 'lint' job
+    steps:
+      # Step 1: Check out your code onto the runner VM
+      # Without this the runner has no code to work with
+      # actions/checkout@v4 is a GitHub-maintained action that handles this for you
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Install Python on the runner VM
+      # actions/setup-python@v5 installs the specified Python version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # Specify the Python version you want to use
+          cache: 'pip' # Cache pip dependencies to speed up future runs
+
+      # Step 3: Install linting tools
+      # run: executes shell commands on the runner
+      - name: Install linting dependencies
+        run: | 
+            pip install --upgrade pip
+            pip install flake8 black isort
+
+      # Step 4: Run flake8 — checks for Python syntax errors and style issues
+      # --max-line-length=100 = allow lines up to 100 chars (PEP8 default is 79)
+      # --exclude = ignore these folders
+      # --count = show total number of errors at the end
+      - name: Run flake8
+        run: flake8 app/ \
+              --max-line-length=100 \
+              --exclude=.git,__pycache__ \
+              --count \
+              --statistics
+
+      # Step 5: Check code formatting with black
+      # --check = don't fix, just report if files need reformatting
+      # --diff = show what would change
+      - name: Check code formatting with black
+        run: black --check --diff app/
+
+      # Step 6: Check import sorting with isort
+      # --check-only = don't fix, just report if files need sorting
+      # --profile black = use black-compatible import style
+      - name: Check import sorting with isort
+        run: isort --check-only --profile black app/
+
+  # ── JOB 2: Run Tests ───────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    needs: lint # This job will only run if the 'lint' job succeeds
+
+    # services = Docker containers that run alongside your job
+    # Perfect for running a test database without docker-compose
+    services:
+      # Define a PostgreSQL service for testing
+      postgres:
+        image: postgres:15-alpine # Use the official PostgreSQL 15 image
+        ports:
+          - 5432:5432 # Expose port 5432 to the runner
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }} # Set the default username
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} # Set the default password
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }} # Set the default database name
+
+        # Health check command to ensure PostgreSQL is ready before running tests
+        # Check every 10 seconds
+        # Timeout after 5 seconds
+        # Retry up to 5 times before giving up
+        options: >-       
+          --health-cmd "pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}"     
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5 
+
+      redis:
+        image: redis:7-alpine # Use the official Redis 7 image
+        ports:
+          - 6379:6379 # Expose port 6379 to the runner
+        # Health check command to ensure Redis is ready before running tests
+        options: >-
+          --health-cmd "redis-cli ping" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
+
+    # Environment variables available to all steps in this job
+    # Note: on the runner VM, DB host is 'localhost' not 'db'
+    # because services run on the same VM, not in a separate Docker network
+    env:
+      DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ${{ secrets.SECRET_KEY }} # Example of another secret you might need
+
+    steps:
+      # Step 1: Check out your code onto the runner VM
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Step 2: Install Python on the runner VM
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # Specify the Python version you want to use
+          cache: 'pip' # Cache pip dependencies to speed up future runs
+
+      # Step 3: Install test dependencies
+      - name: Install test dependencies
+        run: | 
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install pytest pytest-asyncio httpx
+      
+      # Step 4: Run tests with pytest
+      - name: Run tests with pytest
+        run: pytest tests/ -v --tb=short
+        # -v = verbose output — shows each test name
+        # --tb=short = short traceback on failure — easier to read
+
+
+
+  # ── JOB 3: Docker Build ───────────────────────────────────────────────────────
+  docker:
+    runs-on: ubuntu-latest
+    needs: [ lint, test ] # This job will only run if the 'lint' and 'test' jobs succeed
+
+    steps:
+      # Step 1: Check out your code onto the runner VM
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx — required for advanced Docker build features
+      # Buildx supports multi-platform builds and better caching
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+
+      # Step 3: Build the Docker image to verify the Dockerfile works
+      # We don't push to a registry yet — just verify it builds
+      # --load = load the built image into Docker on the runner
+      # --cache-from/to = cache Docker layers between runs (faster builds)
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Build context is the root of the repository
+          push: false # Don't push the image to a registry
+          load: true # Load the built image into Docker on the runner
+          tags: saas-api:latest # Tag the image as 'saas-api:latest'
+          cache-from: type=gha
+          cache-to: type=gha,mode=max # Use local directory for cache destination
+
+      # Verify the built image starts correctly
+      # Run the container and hit the health endpoint
+      - name: Verify Docker image
+        run: |
+          docker run -d \
+          --name saas-test \
+          -p 8000:8000 \
+          -e DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@host.docker.internal:5432/${{ secrets.POSTGRES_DB }} \
+          -e REDIS_URL=redis://host.docker.internal:6379/0 \  
+          -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+          saas-api:latest
+
+          # Wait for the container to be healthy
+          sleep 5 # Wait a few seconds for the app to start
+
+          curl -fail http://localhost:8000/health || (echo "Health check failed" && exit 1)
+
+          echo "Docker image verified successfully"

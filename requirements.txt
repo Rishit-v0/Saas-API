@@ -9,3 +9,5 @@ pydantic[email]
 redis>=5.0
 pytest
 httpx
+alembic
+python-multipart
