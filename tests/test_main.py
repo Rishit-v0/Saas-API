@@ -4,21 +4,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
+from urllib.parse import quote_plus
 import os
+
 
 # Use a separate test database — never run tests against your dev DB
 # Tests create and destroy data rapidly — you don't want that in dev
 
-DATABASE_PASSWORD = os.getenv(
-    'DATABASE_PASSWORD',
-    'postgres123'
-).split('@')[0] + "%4014"
+DATABASE_PASSWORD = quote_plus(os.getenv('DATABASE_PASSWORD', 'postgres'))
 DATABASE_USER = os.getenv(
     'DATABASE_USER',
     'postgres'
 ) # Extract username if it contains '@'
 TEST_DATABASE_URL = f'postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@localhost:5432/saas_test_db'
-print(f"Using test database URL: {TEST_DATABASE_URL}")  
 
 # Set up the test database engine and session
 engine = create_engine(TEST_DATABASE_URL)
