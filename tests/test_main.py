@@ -14,7 +14,7 @@ import os
 DATABASE_PASSWORD = quote_plus(os.getenv('DATABASE_PASSWORD', 'postgres'))
 DATABASE_USER = os.getenv(
     'DATABASE_USER',
-    'postgres'
+    'rishit'
 ) # Extract username if it contains '@'
 TEST_DATABASE_URL = f'postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@localhost:5432/saas_test_db'
 
