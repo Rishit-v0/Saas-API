@@ -20,7 +20,7 @@ ADMIN_URL = URL.create(
     password=os.getenv("DATABASE_PASSWORD"),
     host="localhost",
     port=int(os.getenv("DATABASE_PORT", "5432")),
-    database=os.getenv("DATABASE_NAME"),  # the one CI created — always exists
+    database="postgres",  # the one CI created — always exists
 )
 
 # ✅ Fixed: use DATABASE_NAME from env so it matches what CI actually creates.
@@ -43,7 +43,7 @@ def ensure_test_database():
             sql_text("SELECT 1 FROM pg_database WHERE datname = 'saas_test_db'")
         ).fetchone()
         if not exists:
-            conn.execute(text("CREATE DATABASE saas_test_db"))
+            conn.execute(sql_text("CREATE DATABASE saas_test_db"))
     admin_engine.dispose()
 
 ensure_test_database()  # ✅ runs before engine is built
