@@ -81,7 +81,7 @@ def get_current_user(
         raise credentials_exception
     user = (
         db.query(models.User)
-        .filter(models.User.email == email, models.User.is_active == True)
+        .filter(models.User.email == email, models.User.is_active)
         .first()
     )
     if user is None:

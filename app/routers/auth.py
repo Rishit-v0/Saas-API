@@ -24,7 +24,7 @@ async def login(
 ):
     user = (
         db.query(models.User)
-        .filter(models.User.email == form_data.username, models.User.is_active == True)
+        .filter(models.User.email == form_data.username, models.User.is_active)
         .first()
     )
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -59,7 +59,7 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
 
     user = (
         db.query(models.User)
-        .filter(models.User.email == email, models.User.is_active == True)
+        .filter(models.User.email == email, models.User.is_active)
         .first()
     )
     if not user:
