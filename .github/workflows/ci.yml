@@ -207,7 +207,5 @@ jobs:
           sleep 5
 
           curl --fail http://localhost:8000/health || (echo "Health check failed" && exit 1)
-          # ✅ fixed: removed trailing space after the REDIS_URL backslash — 
-          #    that caused a shell syntax error
-          
+
           echo "Docker image verified successfully"
