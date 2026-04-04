@@ -27,7 +27,7 @@ jobs:
       # Without this the runner has no code to work with
       # actions/checkout@v4 is a GitHub-maintained action that handles this for you
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       # Step 2: Install Python on the runner VM
       # actions/setup-python@v5 installs the specified Python version
@@ -86,7 +86,7 @@ jobs:
         # Timeout after 5 seconds
         # Retry up to 5 times before giving up
         options: >-       
-          --health-cmd "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"     
+          --health-cmd "pg_isready -U rishit"     
           --health-interval 10s 
           --health-timeout 5s 
           --health-retries 5 
@@ -107,13 +107,20 @@ jobs:
     # because services run on the same VM, not in a separate Docker network
     env:
       DATABASE_URL: postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@localhost:5432/${{ secrets.DATABASE_NAME }}
-      REDIS_URL: redis://localhost:6379/0
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.TEST_DATABASE_NAME }}     # ✅ added: exposed individually
+      DATABASE_HOST: ${{ secrets.TEST_DATABASE_HOST }}                       #    so conftest.py can read them
+      DATABASE_PORT: "5432"
+      REDIS_URL: redis://${{ secrets.REDIS_HOST }}:${{ secrets.REDIS_PORT }}/0
+      REDIS_HOST: ${ { secrets.REDIS_HOST } }
+      REDIS_PORT: ${{ secrets.REDIS_PORT }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }} # Example of another secret you might need
 
     steps:
       # Step 1: Check out your code onto the runner VM
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       # Step 2: Install Python on the runner VM
       - name: Set up Python
@@ -132,7 +139,7 @@ jobs:
       - name: Wait for Postgres
         run: |
           for i in {1..10}; do
-            pg_isready -h localhost -p 5432 -U ${{ secrets.DATABASE_USER }} && break
+            pg_isready -h localhost -p 5432 && break
             echo "Waiting for postgres..."
             sleep 2
           done
@@ -180,16 +187,17 @@ jobs:
       - name: Verify Docker image
         run: |
           docker run -d \
-          --name saas-test \
-          -p 8000:8000 \
-          -e DATABASE_URL=postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@host.docker.internal:5432/${{ secrets.DATABASE_NAME }} \
-          -e REDIS_URL=redis://host.docker.internal:6379/0 \  
-          -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
-          saas-api:latest
+            --name saas-test \
+            -p 8000:8000 \
+            -e DATABASE_URL=postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@host.docker.internal:5432/${{ secrets.DATABASE_NAME }} \
+            -e REDIS_URL=redis://host.docker.internal:6379/0 \
+            -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+            saas-api:latest
 
-          # Wait for the container to be healthy
-          sleep 5 # Wait a few seconds for the app to start
+          sleep 5
 
-          curl -fail http://localhost:8000/health || (echo "Health check failed" && exit 1)
-
+          curl --fail http://localhost:8000/health || (echo "Health check failed" && exit 1)
+          # ✅ fixed: removed trailing space after the REDIS_URL backslash — 
+          #    that caused a shell syntax error
+          
           echo "Docker image verified successfully"

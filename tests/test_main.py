@@ -17,13 +17,15 @@ DATABASE_USER = os.getenv(
     'DATABASE_USER',
     'postgres'
 ) # Extract username if it contains '@'
+# ✅ Fixed: use DATABASE_NAME from env so it matches what CI actually creates.
+#    Also cast DATABASE_PORT to int — URL.create() requires it.
 TEST_DATABASE_URL = URL.create(
     drivername="postgresql",
     username=os.getenv("DATABASE_USER"),
     password=os.getenv("DATABASE_PASSWORD"),
-    host="localhost",
-    port=os.getenv("DATABASE_PORT"),
-    database="saas_test_db",
+    host=os.getenv("TEST_DATABASE_HOST", "localhost"),
+    port=int(os.getenv("DATABASE_PORT", "5432")),   # ✅ cast to int
+    database=os.getenv("TEST_DATABASE_NAME"),             # ✅ was hardcoded "saas_test_db"
 )
 
 # Set up the test database engine and session
