@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -9,11 +10,20 @@ load_dotenv()  # Load environment variables from .env file
 
 # SQLAlchemy connection string — same info as Django DATABASES setting
 # Format: postgresql://user:password@host:port/dbname
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://rishit:DATABASE_PASSWORD@localhost:5432/saas_db",
-)
+# DATABASE_URL = os.getenv(
+#     "DATABASE_URL",
+#     "postgresql://rishit:DATABASE_PASSWORD@localhost:5432/saas_db",
+# )
 
+
+DATABASE_URL = URL.create(
+    drivername="postgresql",
+    username=os.getenv("DATABASE_USER"),
+    password=os.getenv("DATABASE_PASSWORD"),
+    host=os.getenv("DATABASE_HOST"),
+    port=os.getenv("DATABASE_PORT"),
+    database=os.getenv("DATABASE_NAME"),
+)
 # create_engine creates the connection pool to PostgreSQL
 # pool_pre_ping=True tests connections before using them — prevents stale connection errors
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

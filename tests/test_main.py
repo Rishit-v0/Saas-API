@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
@@ -14,9 +15,16 @@ import os
 DATABASE_PASSWORD = quote_plus(os.getenv('DATABASE_PASSWORD', 'postgres'))
 DATABASE_USER = os.getenv(
     'DATABASE_USER',
-    'rishit'
+    'postgres'
 ) # Extract username if it contains '@'
-TEST_DATABASE_URL = f'postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@localhost:5432/saas_test_db'
+TEST_DATABASE_URL = URL.create(
+    drivername="postgresql",
+    username=os.getenv("DATABASE_USER"),
+    password=os.getenv("DATABASE_PASSWORD"),
+    host="localhost",
+    port=os.getenv("DATABASE_PORT"),
+    database="saas_test_db",
+)
 
 # Set up the test database engine and session
 engine = create_engine(TEST_DATABASE_URL)
