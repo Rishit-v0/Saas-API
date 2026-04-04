@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
-from sqlalchemy import text as sql_text
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
@@ -36,14 +36,23 @@ TEST_DATABASE_URL = URL.create(
 
 # ── Create saas_test_db if it doesn't exist ────────────────────────────────────
 def ensure_test_database():
-    # Must connect with autocommit=True — CREATE DATABASE can't run inside a transaction
     admin_engine = create_engine(ADMIN_URL, isolation_level="AUTOCOMMIT")
     with admin_engine.connect() as conn:
+        # Create main app DB if missing
+        main_db = os.getenv("DATABASE_NAME")
         exists = conn.execute(
-            sql_text("SELECT 1 FROM pg_database WHERE datname = 'saas_test_db'")
+            sa_text(f"SELECT 1 FROM pg_database WHERE datname = '{main_db}'")
         ).fetchone()
         if not exists:
-            conn.execute(sql_text("CREATE DATABASE saas_test_db"))
+            conn.execute(sa_text(f"CREATE DATABASE {main_db}"))
+
+        # Create test DB if missing
+        test_db = os.getenv("TEST_DATABASE_NAME")
+        exists = conn.execute(
+            sa_text(f"SELECT 1 FROM pg_database WHERE datname = '{test_db}'")
+        ).fetchone()
+        if not exists:
+            conn.execute(sa_text(f"CREATE DATABASE {test_db}"))
     admin_engine.dispose()
 
 ensure_test_database()  # ✅ runs before engine is built
