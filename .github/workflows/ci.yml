@@ -77,9 +77,9 @@ jobs:
         ports:
           - 5432:5432 # Expose port 5432 to the runner
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }} # Set the default username
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} # Set the default password
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }} # Set the default database name
+          POSTGRES_USER: ${{ secrets.DATABASE_USER }} # Set the default username
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }} # Set the default password
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }} # Set the default database name
 
         # Health check command to ensure PostgreSQL is ready before running tests
         # Check every 10 seconds
@@ -106,7 +106,7 @@ jobs:
     # Note: on the runner VM, DB host is 'localhost' not 'db'
     # because services run on the same VM, not in a separate Docker network
     env:
-      DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
+      DATABASE_URL: postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@localhost:5432/${{ secrets.DATABASE_NAME }}
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: ${{ secrets.SECRET_KEY }} # Example of another secret you might need
 
@@ -129,6 +129,14 @@ jobs:
             pip install -r requirements.txt
             pip install pytest pytest-asyncio httpx
       
+      - name: Wait for Postgres
+        run: |
+          for i in {1..10}; do
+            pg_isready -h localhost -p 5432 -U ${{ secrets.DATABASE_USER }} && break
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+
       # Step 4: Run tests with pytest
       - name: Run tests with pytest
         run: pytest tests/ -v --tb=short
@@ -174,7 +182,7 @@ jobs:
           docker run -d \
           --name saas-test \
           -p 8000:8000 \
-          -e DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@host.docker.internal:5432/${{ secrets.POSTGRES_DB }} \
+          -e DATABASE_URL=postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@host.docker.internal:5432/${{ secrets.DATABASE_NAME }} \
           -e REDIS_URL=redis://host.docker.internal:6379/0 \  
           -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
           saas-api:latest
