@@ -18,7 +18,7 @@ ADMIN_URL = URL.create(
     drivername="postgresql",
     username=os.getenv("DATABASE_USER"),
     password=os.getenv("DATABASE_PASSWORD"),
-    host="localhost",
+    host=os.getenv("TEST_DATABASE_HOST", "localhost"),
     port=int(os.getenv("DATABASE_PORT", "5432")),
     database="postgres",  # the one CI created — always exists
 )
@@ -31,7 +31,7 @@ TEST_DATABASE_URL = URL.create(
     password=os.getenv("DATABASE_PASSWORD"),
     host=os.getenv("TEST_DATABASE_HOST", "localhost"),
     port=int(os.getenv("DATABASE_PORT", "5432")),   # ✅ cast to int
-    database=os.getenv("TEST_DATABASE_NAME"),             # ✅ was hardcoded "saas_test_db"
+    database="saas_test_db",             # ✅ was hardcoded "saas_test_db"
 )
 
 # ── Create saas_test_db if it doesn't exist ────────────────────────────────────
@@ -47,7 +47,7 @@ def ensure_test_database():
             conn.execute(sa_text(f"CREATE DATABASE {main_db}"))
 
         # Create test DB if missing
-        test_db = os.getenv("TEST_DATABASE_NAME")
+        test_db = "saas_test_db"
         exists = conn.execute(
             sa_text(f"SELECT 1 FROM pg_database WHERE datname = '{test_db}'")
         ).fetchone()
