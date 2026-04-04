@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database import Base, get_db
@@ -11,12 +12,17 @@ import os
 
 # Use a separate test database — never run tests against your dev DB
 # Tests create and destroy data rapidly — you don't want that in dev
+# ── Build both URLs ────────────────────────────────────────────────────────────
 
-DATABASE_PASSWORD = quote_plus(os.getenv('DATABASE_PASSWORD', 'postgres'))
-DATABASE_USER = os.getenv(
-    'DATABASE_USER',
-    'postgres'
-) # Extract username if it contains '@'
+ADMIN_URL = URL.create(
+    drivername="postgresql",
+    username=os.getenv("DATABASE_USER"),
+    password=os.getenv("DATABASE_PASSWORD"),
+    host="localhost",
+    port=int(os.getenv("DATABASE_PORT", "5432")),
+    database=os.getenv("DATABASE_NAME"),  # the one CI created — always exists
+)
+
 # ✅ Fixed: use DATABASE_NAME from env so it matches what CI actually creates.
 #    Also cast DATABASE_PORT to int — URL.create() requires it.
 TEST_DATABASE_URL = URL.create(
@@ -27,6 +33,21 @@ TEST_DATABASE_URL = URL.create(
     port=int(os.getenv("DATABASE_PORT", "5432")),   # ✅ cast to int
     database=os.getenv("TEST_DATABASE_NAME"),             # ✅ was hardcoded "saas_test_db"
 )
+
+# ── Create saas_test_db if it doesn't exist ────────────────────────────────────
+def ensure_test_database():
+    # Must connect with autocommit=True — CREATE DATABASE can't run inside a transaction
+    admin_engine = create_engine(ADMIN_URL, isolation_level="AUTOCOMMIT")
+    with admin_engine.connect() as conn:
+        exists = conn.execute(
+            sql_text("SELECT 1 FROM pg_database WHERE datname = 'saas_test_db'")
+        ).fetchone()
+        if not exists:
+            conn.execute(text("CREATE DATABASE saas_test_db"))
+    admin_engine.dispose()
+
+ensure_test_database()  # ✅ runs before engine is built
+
 
 # Set up the test database engine and session
 engine = create_engine(TEST_DATABASE_URL)
