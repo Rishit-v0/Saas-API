@@ -113,7 +113,7 @@ jobs:
       DATABASE_HOST: ${{ secrets.TEST_DATABASE_HOST }}                       #    so conftest.py can read them
       DATABASE_PORT: "5432"
       REDIS_URL: redis://${{ secrets.REDIS_HOST }}:${{ secrets.REDIS_PORT }}/0
-      REDIS_HOST: ${ { secrets.REDIS_HOST } }
+      REDIS_HOST: ${{ secrets.REDIS_HOST }}
       REDIS_PORT: ${{ secrets.REDIS_PORT }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }} # Example of another secret you might need
 
@@ -143,7 +143,17 @@ jobs:
             echo "Waiting for postgres..."
             sleep 2
           done
+      # ✅ Add this new step right after
+      - name: Create test database
+        run: |
+          PGPASSWORD=${{ secrets.DATABASE_PASSWORD }} psql \
+            -h ${{ secrets.TEST_DATABASE_HOST }} \
+            -U ${{ secrets.DATABASE_USER }} \
+            -d ${{ secrets.DATABASE_NAME }} \
+            -c "CREATE DATABASE ${{ secrets.TEST_DATABASE_NAME }};"
 
+      - name: Run tests with pytest
+        run: pytest tests/ -v --tb=short
       # Step 4: Run tests with pytest
       - name: Run tests with pytest
         run: pytest tests/ -v --tb=short

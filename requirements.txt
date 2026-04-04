@@ -11,4 +11,4 @@ pytest
 httpx
 alembic
 python-multipart
-# Optional
+bcrypt==3.2.2
