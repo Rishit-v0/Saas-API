@@ -49,11 +49,7 @@ jobs:
       # --exclude = ignore these folders
       # --count = show total number of errors at the end
       - name: Run flake8
-        run: flake8 app/ \
-              --max-line-length=100 \
-              --exclude=.git,__pycache__ \
-              --count \
-              --statistics
+        run: flake8 app/ --max-line-length=100 --exclude=.git,__pycache__ --count --statistics
 
       # Step 5: Check code formatting with black
       # --check = don't fix, just report if files need reformatting
