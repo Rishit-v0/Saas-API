@@ -140,9 +140,7 @@ async def invite_user_to_tenant(
     db.add(membership)
     db.commit()
 
-    return {
-        "detail": f"User {invite_data.email} invited to tenant '{tenant.name}'"
-    }
+    return {"detail": f"User {invite_data.email} invited to tenant '{tenant.name}'"}
 
 
 @router.get("/{slug}/members", response_model=List[schemas.TenantUserResponse])
