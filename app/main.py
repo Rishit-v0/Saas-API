@@ -24,6 +24,7 @@ app = FastAPI(
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(tenant_router.router, prefix="/api/v1")
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "version": "0.1.0"}

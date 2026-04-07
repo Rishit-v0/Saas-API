@@ -76,11 +76,11 @@ class UserWithTenants(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 # ── TenantMember Schemas ───────────────────────────────────────────────────────
 class InviteUser(BaseModel):
     email: EmailStr
     role: Optional[UserRole] = UserRole.MEMBER
+
 
 class MemberResponse(BaseModel):
     user: UserResponse
