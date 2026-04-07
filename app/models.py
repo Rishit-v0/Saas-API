@@ -15,7 +15,7 @@ from .database import Base
 
 
 class UserRole(str, enum.Enum):
-    USER = "user"
+    OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
 

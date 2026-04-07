@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saas-redis
+  namespace: saas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saas-redis
+  template:
+    metadata:
+      labels:
+        app: saas-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: saas-redis
+  namespace: saas
+spec:
+  selector:
+    app: saas-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP

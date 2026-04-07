@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saas-api
+  namespace: saas
+spec:
+  # 2 replicas = 2 copies of the API running
+  # k8s load balances traffic between them automatically
+  # If one crashes, the other keeps serving — zero downtime
+  replicas: 2
+  selector:
+    matchLabels:
+      app: saas-api
+  template:
+    metadata:
+      labels:
+        app: saas-api
+    spec:
+      containers:
+        - name: saas-api
+          # Use minikube's local Docker image
+          # imagePullPolicy: Never = don't try to pull from Docker Hub
+          # use the locally built image instead
+          image: saas-api:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: saas-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: saas-secrets
+                  key: DATABASE_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: saas-secrets
+                  key: SECRET_KEY
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: saas-config
+                  key: REDIS_URL
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: saas-config
+                  key: DATABASE_NAME
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: saas-config
+                  key: DATABASE_HOST
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: saas-config
+                  key: DATABASE_PORT
+            - name: DATABASE_URL
+              value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)"
+          # livenessProbe = k8s checks this to know if the pod is alive
+          # If it fails, k8s restarts the pod
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            # initialDelaySeconds = wait before first check
+            # gives app time to start up before checking
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          # readinessProbe = k8s checks this to know if pod is ready for traffic
+          # Pod won't receive traffic until this passes
+          # Prevents requests going to a pod that's still starting up
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: saas-api
+  namespace: saas
+spec:
+  selector:
+    app: saas-api
+  ports:
+    - port: 80          # Service listens on port 80
+      targetPort: 8000  # forwards to pod port 8000
+  # NodePort exposes the service on each Node's IP
+  # Lets us access it from our laptop during development
+  # In production you'd use LoadBalancer or Ingress instead
+  type: NodePort

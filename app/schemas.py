@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserRole(str, Enum):
+    OWNER = "owner"
     ADMIN = "admin"
-    USER = "user"
     MEMBER = "member"
 
 
@@ -72,5 +72,19 @@ class TenantUserResponse(BaseModel):
 
 class UserWithTenants(BaseModel):
     tenant_memberships: List[TenantUserResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+
+# ── TenantMember Schemas ───────────────────────────────────────────────────────
+class InviteUser(BaseModel):
+    email: EmailStr
+    role: Optional[UserRole] = UserRole.MEMBER
+
+class MemberResponse(BaseModel):
+    user: UserResponse
+    role: UserRole
+    joined_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

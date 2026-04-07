@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: saas
+  labels:
+    name: saas-api
+  annotations:
+    description: "Namespace for Saas API components"
