@@ -141,7 +141,7 @@ async def invite_user_to_tenant(
     db.commit()
 
     return {
-        "detail": f"User {invite_data.email} invited to tenant '{tenant.name}' with role '{invite_data.role}'"
+        "detail": f"User {invite_data.email} invited to tenant '{tenant.name}'"
     }
 
 
