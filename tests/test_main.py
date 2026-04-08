@@ -195,3 +195,83 @@ class TestRefreshToken:
             "refresh_token": "invalidtoken"
         })
         assert response.status_code == 401
+
+
+class TestRegistrationEdgeCases:
+    def test_register_never_returns_password(self, client):
+        response = client.post("/api/v1/auth/register", json={
+            "email": "secure@test.com",
+            "username": "secureuser",
+            "password": "securepassword",
+            "password2": "securepassword"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "password" not in data
+        assert "hashed_password" not in data
+        assert "password2" not in data
+
+    def test_register_invalid_email_returns_422(self, client):
+        # 422 = Pydantic validation error.
+        # Pydantic's EmailStr catches invalid emails before your code runs.
+
+        response = client.post("/api/v1/auth/register", json={
+            "email": "not-an-email",
+            "username": "user",
+            "password": "password",
+            "password2": "password"
+        })
+        assert response.status_code == 422
+
+    def test_register_missing_fields_returns_422(self, client):
+        response = client.post("/api/v1/auth/register", json={
+            "email": "test@example.com",
+            # Missing username, password, password2
+        })
+        assert response.status_code == 422
+
+
+class TestLoginEdgeCases:
+    def test_login_returns_valid_jwt_format(self, client, registered_user):
+        response = client.post("/api/v1/auth/token", data={
+            "username": registered_user["email"],
+            "password": "testpassword"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        access_token = data["access_token"]
+        # JWTs have three parts separated by dots
+        assert len(access_token.split(".")) == 3
+
+    def test_access_token_cannot_be_used_as_refresh_token(self, client, registered_user):
+        response = client.post("/api/v1/auth/token", data={
+            "username": registered_user["email"],
+            "password": "testpassword"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        access_token = data["access_token"]
+
+        # Try to use the access token as a refresh token
+        refresh_response = client.post("/api/v1/auth/refresh", json={
+            "refresh_token": access_token
+        })
+        assert refresh_response.status_code == 401
+
+
+class TestProtectedEndpoints:
+    def test_protected_endpoint_without_token_returns_401(self, client):
+        response = client.get("/api/v1/tenants/")
+        assert response.status_code == 401
+
+    def test_protected_endpoint_with_invalid_token_returns_401(self, client):
+        response = client.get("/api/v1/tenants/", headers={
+            "Authorization": "Bearer totally.invalidtoken.token"
+        })
+        assert response.status_code == 401
+
+    def test_protected_endpoint_with_valid_token_returns_200(self, client, auth_token):
+        response = client.get("/api/v1/tenants/", headers={
+            "Authorization": f"Bearer {auth_token}"
+        })
+        assert response.status_code == 200
