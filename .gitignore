@@ -1,15 +1,22 @@
+# Python
 venv/
 .env
-.env.test
 __pycache__/
 *.pyc
 *.pyo
-.idea/
-.vscode/
-.coverage
-htmlcov/
+.pytest_cache/
+
+# Terraform
 terraform/.terraform/
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/terraform.tfvars
 terraform/.terraform.lock.hcl
+
+# IDE
+.idea/
+.vscode/
+
+# Coverage
+.coverage
+htmlcov/
