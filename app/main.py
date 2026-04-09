@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from .database import Base, engine
 from .routers import auth as auth_router
+from .routers import notes as notes_router
 from .routers import tenants as tenant_router
 
 
@@ -23,6 +24,7 @@ app = FastAPI(
 
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(tenant_router.router, prefix="/api/v1")
+app.include_router(notes_router.router, prefix="/api/v1")
 
 
 @app.get("/health")

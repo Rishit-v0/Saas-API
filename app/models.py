@@ -71,3 +71,26 @@ class TenantUser(Base):
 
     def __repr__(self):
         return f"<TenantUser tenant_id={self.tenant_id} user_id={self.user_id} role={self.role}>"
+
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(
+        Integer, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    author_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    title = Column(String(255), nullable=False)
+    content = Column(String, nullable=True, default="")
+    is_archived = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    tenant = relationship("Tenant", backref="notes")
+    author = relationship("User", backref="notes")
+
+    def __repr__(self):
+        return f"<Note {self.title}>"

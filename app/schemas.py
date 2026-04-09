@@ -88,3 +88,28 @@ class MemberResponse(BaseModel):
     joined_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Note Schemas ────────────────────────────────────────────────────────────────
+class NoteCreate(BaseModel):
+    title: str
+    content: str
+
+
+class NoteResponse(BaseModel):
+    id: int
+    tenant_id: int
+    author_id: int
+    title: str
+    content: str
+    is_archived: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_archived: Optional[bool] = None
