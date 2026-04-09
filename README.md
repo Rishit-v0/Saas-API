@@ -27,7 +27,7 @@ AI-powered multi-tenant SaaS backend built with FastAPI, PostgreSQL, Redis, and 
 - Terraform IaC config
 
 ## Project Structure
-\`\`\`
+```
 saas-api/
 ├── app/
 │   ├── main.py          # App entry point, router registration, lifespan
@@ -51,14 +51,14 @@ saas-api/
 ├── Dockerfile
 ├── docker-compose.yml
 └── requirements.txt
-\`\`\`
+```
 
 ## Getting Started
-\`\`\`bash
+```bash
 cp .env.example .env   # fill in your values
 docker-compose up --build
-\`\`\`
-Visit **http://localhost:8002/docs** for interactive API documentation.
+```
+Visit **http://localhost:8000/docs** for interactive API documentation.
 
 ## API Endpoints
 
@@ -88,13 +88,13 @@ Visit **http://localhost:8002/docs** for interactive API documentation.
 | DELETE | /api/v1/tenants/{slug}/notes/{id} | JWT + Author/Admin | Delete note |
 
 ## Running Tests
-\`\`\`bash
+``` bash
 pytest tests/ -v
-\`\`\`
+```
 
 ## Environment Variables
-\`\`\`env
+```env
 DATABASE_URL=postgresql://postgres:password@db:5432/saas_db
 SECRET_KEY=your-secret-key
 REDIS_URL=redis://redis:6379/0
-\`\`\`
+```
