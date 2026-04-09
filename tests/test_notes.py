@@ -48,7 +48,7 @@ class TestNoteListing:
         assert data[0]['title'] == created_note['title']
         assert data[0]['content'] == created_note['content']
 
-    def test_archived_notes_are_not_listed(self, client, auth_headers, created_tenant, created_note, db_session):
+    def test_archived_notes_are_not_listed(self, client, auth_headers, created_tenant, created_note):
         client.put(f"/api/v1/tenants/{created_tenant['slug']}/notes/{created_note['id']}/", json={"is_archived": True}, headers=auth_headers)
         response = client.get(f"/api/v1/tenants/{created_tenant['slug']}/notes/", headers=auth_headers)
         data = response.json()
