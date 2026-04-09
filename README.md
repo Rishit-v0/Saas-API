@@ -42,7 +42,7 @@ saas-api/
 │       └── notes.py     # Notes CRUD scoped to tenants
 ├── tests/
 │   ├── conftest.py      # Shared fixtures, test DB setup
-│   ├── test_main.py     # Auth + protected endpoint tests
+│   ├── test_auth.py     # Auth + protected endpoint tests
 │   ├── test_tenants.py  # Tenant isolation + RBAC tests
 │   └── test_notes.py    # Notes CRUD + authorship tests
 ├── k8s/                 # Kubernetes manifests
