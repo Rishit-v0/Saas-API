@@ -70,7 +70,7 @@ def list_notes(
 
     notes = (
         db.query(models.Note)
-        .filter(models.Note.tenant_id == tenant.id, not models.Note.is_archived)
+        .filter(models.Note.tenant_id == tenant.id, models.Note.is_archived.is_(False))
         .order_by(models.Note.created_at.desc())
         .all()
     )
