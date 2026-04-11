@@ -152,8 +152,8 @@ jobs:
       #       -d ${{ secrets.DATABASE_NAME }} \
       #       -c "CREATE DATABASE ${{ secrets.TEST_DATABASE_NAME }};"
 
-      - name: Run tests with pytest
-        run: pytest tests/ -v --tb=short
+      # - name: Run tests with pytest
+      #   run: pytest tests/ -v --tb=short
       # Step 4: Run tests with pytest
       - name: Run tests with pytest
         run: pytest tests/ -v --tb=short
