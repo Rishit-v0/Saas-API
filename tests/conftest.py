@@ -1,13 +1,15 @@
+# from app import models, auth
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text as sa_text
-from app.main import app
 from sqlalchemy.engine import URL
+from sqlalchemy.orm import sessionmaker
+
 from app.database import Base, get_db
-from app import models, auth
-import os
+from app.main import app
 
 # Create a test database URL (using SQLite for simplicity)
 # Use a separate test database — never run tests against your dev DB
@@ -30,9 +32,10 @@ TEST_DATABASE_URL = URL.create(
     username=os.getenv("DATABASE_USER"),
     password=os.getenv("DATABASE_PASSWORD"),
     host=os.getenv("TEST_DATABASE_HOST", "localhost"),
-    port=int(os.getenv("DATABASE_PORT", "5432")),   # ✅ cast to int
-    database="saas_test_db",             # ✅ was hardcoded "saas_test_db"
+    port=int(os.getenv("DATABASE_PORT", "5432")),  # ✅ cast to int
+    database="saas_test_db",  # ✅ was hardcoded "saas_test_db"
 )
+
 
 # ── Create saas_test_db if it doesn't exist ────────────────────────────────────
 def ensure_test_database():
@@ -55,12 +58,14 @@ def ensure_test_database():
             conn.execute(sa_text(f"CREATE DATABASE {test_db}"))
     admin_engine.dispose()
 
+
 ensure_test_database()  # ✅ runs before engine is built
 
 
 # Set up the test database engine and session
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 # Override the get_db dependency to use the test database
 def override_get_db():
@@ -70,8 +75,10 @@ def override_get_db():
     finally:
         db.close()
 
+
 # Apply the override to the app's dependency
-app.dependency_overrides[get_db] = override_get_db  
+app.dependency_overrides[get_db] = override_get_db
+
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_database():
@@ -80,6 +87,7 @@ def setup_database():
     yield  # run the test
     # Drop all tables after the test to clean up
     Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture(scope="function")
 def client():
@@ -95,6 +103,7 @@ def db_session():
     finally:
         db.close()
 
+
 # ── User fixtures ──────────────────────────────────────────────────────────────
 @pytest.fixture
 def user_payload():
@@ -102,8 +111,9 @@ def user_payload():
         "email": "rishit@test.com",
         "username": "rishit",
         "password": "StrongPass123!",
-        "password2": "StrongPass123!"
+        "password2": "StrongPass123!",
     }
+
 
 @pytest.fixture
 def second_user_payload():
@@ -111,8 +121,9 @@ def second_user_payload():
         "email": "second@test.com",
         "username": "seconduser",
         "password": "StrongPass123!",
-        "password2": "StrongPass123!"
+        "password2": "StrongPass123!",
     }
+
 
 @pytest.fixture
 def registered_user(client, user_payload):
@@ -120,45 +131,46 @@ def registered_user(client, user_payload):
     assert response.status_code == 201, f"Registration failed: {response.json()}"
     return response.json()
 
+
 @pytest.fixture
 def second_registered_user(client, second_user_payload):
     response = client.post("/api/v1/auth/register", json=second_user_payload)
     assert response.status_code == 201, f"Registration failed: {response.json()}"
     return response.json()
 
+
 @pytest.fixture
 def auth_headers(client, registered_user):
     response = client.post(
-        "/api/v1/auth/token", 
-        data={
-            "username": registered_user["email"],
-            "password": "StrongPass123!"
-        }
+        "/api/v1/auth/token",
+        data={"username": registered_user["email"], "password": "StrongPass123!"},
     )
     assert response.status_code == 200, f"Authentication failed: {response.json()}"
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
 
 @pytest.fixture
 def second_auth_headers(client, second_registered_user):
     response = client.post(
-        "/api/v1/auth/token", 
+        "/api/v1/auth/token",
         data={
             "username": second_registered_user["email"],
-            "password": "StrongPass123!"
-        }
+            "password": "StrongPass123!",
+        },
     )
     assert response.status_code == 200, f"Authentication failed: {response.json()}"
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
+
 @pytest.fixture
 def tenant_payload():
-    return {
-        "name": "Acme Corp",
-        "slug": "acme-corp"
-    }
+    return {"name": "Acme Corp", "slug": "acme-corp"}
+
 
 @pytest.fixture
 def created_tenant(client, auth_headers, tenant_payload):
-    response = client.post("/api/v1/tenants/", json=tenant_payload, headers=auth_headers)
+    response = client.post(
+        "/api/v1/tenants/", json=tenant_payload, headers=auth_headers
+    )
     assert response.status_code == 201, f"Tenant creation failed: {response.json()}"
     return response.json()
