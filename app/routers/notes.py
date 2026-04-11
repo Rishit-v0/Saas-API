@@ -12,24 +12,24 @@ router = APIRouter(
 )
 
 
-def get_tenant_and_check_membership(
-    db: Session, slug: str, current_user: models.User, required_role: models.UserRole
-):
-    tenant = (
-        db.query(models.Tenant)
-        .filter(models.Tenant.slug == slug, models.Tenant.is_active)
-        .first()
-    )
-    if not tenant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
-        )
+# def get_tenant_and_check_membership(
+#     db: Session, slug: str, current_user: models.User, required_role: models.UserRole
+# ):
+#     tenant = (
+#         db.query(models.Tenant)
+#         .filter(models.Tenant.slug == slug, models.Tenant.is_active)
+#         .first()
+#     )
+#     if not tenant:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+#         )
 
-    auth.check_user_permissions(
-        user=current_user, tenant_id=tenant.id, db=db, required_role=required_role
-    )
+#     auth.check_user_permissions(
+#         user=current_user, tenant_id=tenant.id, db=db, required_role=required_role
+#     )
 
-    return tenant
+#     return tenant
 
 
 @router.post(
@@ -41,7 +41,7 @@ def create_note(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    tenant = get_tenant_and_check_membership(
+    tenant = auth.get_tenant_or_404(
         db, slug, current_user, required_role=models.UserRole.MEMBER
     )
 
@@ -64,13 +64,17 @@ def list_notes(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    tenant = get_tenant_and_check_membership(
+    tenant = auth.get_tenant_or_404(
         db, slug, current_user, required_role=models.UserRole.MEMBER
     )
 
     notes = (
         db.query(models.Note)
-        .filter(models.Note.tenant_id == tenant.id, models.Note.is_archived.is_(False))
+        .filter(
+            models.Note.tenant_id == tenant.id,
+            models.Note.tenant_id == tenant.id,
+            models.Note.is_archived.is_(False),
+        )
         .order_by(models.Note.created_at.desc())
         .all()
     )
@@ -84,7 +88,7 @@ def get_note(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    tenant = get_tenant_and_check_membership(
+    tenant = auth.get_tenant_or_404(
         db,
         slug,
         current_user,
@@ -97,7 +101,11 @@ def get_note(
 
     note = (
         db.query(models.Note)
-        .filter(models.Note.id == note_id, models.Note.tenant_id == tenant.id)
+        .filter(
+            models.Note.tenant_id == tenant.id,
+            models.Note.id == note_id,
+            models.Note.tenant_id == tenant.id,
+        )
         .first()
     )
     if not note:
@@ -116,13 +124,17 @@ def update_note(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    tenant = get_tenant_and_check_membership(
+    tenant = auth.get_tenant_or_404(
         db, slug, current_user, required_role=models.UserRole.MEMBER
     )
 
     note = (
         db.query(models.Note)
-        .filter(models.Note.id == note_id, models.Note.tenant_id == tenant.id)
+        .filter(
+            models.Note.tenant_id == tenant.id,
+            models.Note.id == note_id,
+            models.Note.tenant_id == tenant.id,
+        )
         .first()
     )
     if not note:
@@ -166,13 +178,17 @@ def delete_note(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    tenant = get_tenant_and_check_membership(
+    tenant = auth.get_tenant_or_404(
         db, slug, current_user, required_role=models.UserRole.MEMBER
     )
 
     note = (
         db.query(models.Note)
-        .filter(models.Note.id == note_id, models.Note.tenant_id == tenant.id)
+        .filter(
+            models.Note.tenant_id == tenant.id,
+            models.Note.id == note_id,
+            models.Note.tenant_id == tenant.id,
+        )
         .first()
     )
     if not note:

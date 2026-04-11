@@ -124,3 +124,21 @@ def check_user_permissions(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return membership
+
+
+def get_tenant_or_404(
+    db: Session, slug: str, current_user: models.User, required_role: str = "member"
+) -> models.Tenant:
+    tenant = (
+        db.query(models.Tenant)
+        .filter(models.Tenant.slug == slug, models.Tenant.is_active.is_(True))
+        .first()
+    )
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
+    check_user_permissions(
+        user=current_user, tenant_id=tenant.id, required_role=required_role, db=db
+    )
+    return tenant
