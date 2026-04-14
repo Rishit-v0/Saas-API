@@ -8,7 +8,7 @@ from ..database import get_db
 
 router = APIRouter(
     prefix="/tenants/{slug}/notes",
-    tags=["notes"],
+    tags=["Notes"],
 )
 
 
