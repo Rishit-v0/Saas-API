@@ -72,7 +72,6 @@ def list_notes(
         db.query(models.Note)
         .filter(
             models.Note.tenant_id == tenant.id,
-            models.Note.tenant_id == tenant.id,
             models.Note.is_archived.is_(False),
         )
         .order_by(models.Note.created_at.desc())
@@ -92,17 +91,12 @@ def get_note(
         db,
         slug,
         current_user,
-        required_role=[
-            models.UserRole.OWNER,
-            models.UserRole.ADMIN,
-            models.UserRole.MEMBER,
-        ],
+        required_role=models.UserRole.MEMBER,
     )
 
     note = (
         db.query(models.Note)
         .filter(
-            models.Note.tenant_id == tenant.id,
             models.Note.id == note_id,
             models.Note.tenant_id == tenant.id,
         )
@@ -131,7 +125,6 @@ def update_note(
     note = (
         db.query(models.Note)
         .filter(
-            models.Note.tenant_id == tenant.id,
             models.Note.id == note_id,
             models.Note.tenant_id == tenant.id,
         )
@@ -185,7 +178,6 @@ def delete_note(
     note = (
         db.query(models.Note)
         .filter(
-            models.Note.tenant_id == tenant.id,
             models.Note.id == note_id,
             models.Note.tenant_id == tenant.id,
         )
