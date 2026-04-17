@@ -1,8 +1,8 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from .. import auth, models, schemas
 from ..database import get_db
@@ -102,7 +102,9 @@ def search_notes(
     # 'english' applies English stemming: "indexes" → "index", "running" → "run"
     search_vector = func.to_tsvector(
         "english",
-        func.coalesce(models.Note.title, "") + " " + func.coalesce(models.Note.content, "")
+        func.coalesce(models.Note.title, "")
+        + " "
+        + func.coalesce(models.Note.content, ""),
     )
 
     # plainto_tsquery converts plain text to a tsquery
