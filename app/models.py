@@ -5,6 +5,7 @@ from sqlalchemy import (  # Enum,; UniqueConstraint,
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
 )
@@ -94,3 +95,11 @@ class Note(Base):
 
     def __repr__(self):
         return f"<Note {self.title}>"
+    
+    # Composite indexes — defined here so Alembic tracks them
+    __table_args__ = (
+        # Covers tenant + user queries with date ordering 
+        Index("idx_notes_tenant_user_created", "tenant_id", "author_id", "created_at"),
+        # Covers single note lookup within tenant
+        Index("idx_notes_tenant_id", "tenant_id", "id"),
+    )
