@@ -41,6 +41,7 @@ services:
       - .env
     volumes:
       - .:/app
+      - ./chroma_data:/app/chroma_data
     depends_on:
       db:
         condition: service_healthy
@@ -50,3 +51,5 @@ services:
 volumes:
   saas_postgres_data:
   saas_redis_data:
+  
+
