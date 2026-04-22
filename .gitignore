@@ -22,5 +22,5 @@ terraform/.terraform.lock.hcl
 .coverage
 htmlcov/
 
-`nchroma_data/
+chroma_data/
 *.chroma
