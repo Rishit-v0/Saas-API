@@ -12,7 +12,7 @@ from openai import OpenAI
 load_dotenv()
 
 
-openai_client = OpenAI()
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
