@@ -12,7 +12,16 @@ from openai import OpenAI
 load_dotenv()
 
 
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# GOOD — only fails when actually called
+openai_client = None
+
+def get_openai_client():
+    global openai_client
+    if openai_client is None:
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return openai_client
+
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
@@ -77,7 +86,7 @@ def embed_text(texts: list[str]) -> list[list[float]]:
     Embed a list of texts using OpenAI's embedding model.
     Always batch — one API call for all texts.
     """
-    response = openai_client.embeddings.create(input=texts, model=EMBEDDING_MODEL)
+    response = get_openai_client().embeddings.create(input=texts, model=EMBEDDING_MODEL)
     return [embedding.embedding for embedding in response.data]
 
 
