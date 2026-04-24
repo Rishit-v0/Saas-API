@@ -34,6 +34,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     tenant_relationships = relationship("TenantUser", back_populates="user")
+    documents = relationship("Document", back_populates="author")
 
     def __repr__(self):
         return f"<User {self.email}>"
@@ -49,6 +50,7 @@ class Tenant(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     members = relationship("TenantUser", back_populates="tenant")
+    documents = relationship("Document", back_populates="tenant")
 
     def __repr__(self):
         return f"<Tenant {self.slug}>"
@@ -102,4 +104,28 @@ class Note(Base):
         Index("idx_notes_tenant_user_created", "tenant_id", "author_id", "created_at"),
         # Covers single note lookup within tenant
         Index("idx_notes_tenant_id", "tenant_id", "id"),
+    )
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    chunk_count = Column(Integer, default=0)
+    is_indexed = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), onupdate=func.now(), default=func.now()
+    )
+
+    tenant = relationship("Tenant", back_populates="documents")
+    author = relationship("User", back_populates="documents")
+
+    __table_args__ = (
+        Index("idx_documents_tenant_id", "tenant_id", "id"),
+        Index("idx_documents_tenant_author", "tenant_id", "author_id"),
     )

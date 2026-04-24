@@ -113,3 +113,29 @@ class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     is_archived: Optional[bool] = None
+
+
+# ── Document Schemas ─────────────────────────────────────────────────────────────
+class DocumentCreate(BaseModel):
+    title: str
+    content: str
+
+
+class DocumentResponse(BaseModel):
+    id: int
+    tenant_id: int
+    author_id: int
+    title: str
+    chunk_count: int
+    is_indexed: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentIngestResponse(BaseModel):
+    document_id: int
+    title: str
+    chunks_stored: int
+    collection: str
+    status: str
