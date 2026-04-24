@@ -16,6 +16,7 @@ load_dotenv()
 # GOOD — only fails when actually called
 openai_client = None
 
+
 def get_openai_client():
     global openai_client
     if openai_client is None:
