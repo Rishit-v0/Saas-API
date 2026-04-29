@@ -224,7 +224,9 @@ def chunk_by_semantic(
     if len(sentences) <= 1:
         return sentences if sentences else [text]
 
-    response = get_openai_client().embeddings.create(input=sentences, model=EMBEDDING_MODEL)
+    response = get_openai_client().embeddings.create(
+        input=sentences, model=EMBEDDING_MODEL
+    )
     embeddings = [emb.embedding for emb in response.data]
 
     split_indices = [0]
