@@ -98,6 +98,8 @@ async def ingest_document_endpoint(
         chunks_stored=result["chunks_stored"],
         collection=result["collection"],
         status="indexed",
+        chunk_strategy=result["chunk_strategy"],
+        avg_tokens_per_chunk=result["avg_tokens_per_chunk"],
     )
 
 

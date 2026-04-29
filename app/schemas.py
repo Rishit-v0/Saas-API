@@ -139,3 +139,5 @@ class DocumentIngestResponse(BaseModel):
     chunks_stored: int
     collection: str
     status: str
+    chunk_strategy: str = "token"
+    avg_tokens_per_chunk: int = 0.0
