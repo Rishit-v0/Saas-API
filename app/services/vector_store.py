@@ -16,16 +16,16 @@ load_dotenv()
 
 
 # ── Client  ────────────────────────────────────────────────────────────────────────────
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # GOOD — only fails when actually called
-# openai_client = None
+openai_client = None
 
 
-# def get_openai_client():
-#     global openai_client
-#     if openai_client is None:
-#         openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-#     return openai_client
+def get_openai_client():
+    global openai_client
+    if openai_client is None:
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return openai_client
 
 
 EMBEDDING_MODEL = "text-embedding-3-small"
@@ -118,7 +118,7 @@ def chunk_by_recursive_separators(
         . + space → sentences
         space → words (last resort before character split)
     """
-    if separators in None:
+    if separators is None:
         separators = ["\\n\\n", "\\n", ". ", " ", ""]
     if len(text) <= chunk_size:
         return [text]
@@ -224,7 +224,7 @@ def chunk_by_semantic(
     if len(sentences) <= 1:
         return sentences if sentences else [text]
 
-    response = openai_client.embeddings.create(input=sentences, model=EMBEDDING_MODEL)
+    response = get_openai_client().embeddings.create(input=sentences, model=EMBEDDING_MODEL)
     embeddings = [emb.embedding for emb in response.data]
 
     split_indices = [0]
@@ -313,7 +313,7 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
             text = _encoder.decode(token_ids)
         safe_texts.append(text)
 
-    response = openai_client.embeddings.create(
+    response = get_openai_client().embeddings.create(
         input=safe_texts,
         model=EMBEDDING_MODEL,
     )
