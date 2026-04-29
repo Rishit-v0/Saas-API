@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserRole(str, Enum):
@@ -140,4 +140,40 @@ class DocumentIngestResponse(BaseModel):
     collection: str
     status: str
     chunk_strategy: str = "token"
-    avg_tokens_per_chunk: int = 0.0
+    avg_tokens_per_chunk: int = 0
+
+
+# ── Query Schemas  ──────────────────────────────────────────────────────────────
+class QueryRequest(BaseModel):
+    question: str
+    top_k: int = 5
+
+    @field_validator("question")
+    @classmethod
+    def question_not_empty(cls, v: str) -> str:
+        if not v or len(v.strip()) < 3:
+            raise ValueError("Question must be at least 3 characters!")
+        return v.strip()
+
+    @field_validator("top_k")
+    @classmethod
+    def top_k_range(cls, v: int) -> int:
+        if v < 1 or v > 20:
+            raise ValueError("top_k must be between 1 and 20!")
+        return v
+
+
+class RetrivedChunk(BaseModel):
+    text: str
+    score: float
+    document_id: str
+    chunk_index: int
+    title: str = ""
+    metadata: dict = {}
+
+
+class QueryResponse(BaseModel):
+    question: str
+    tenant_slug: str
+    chunks_retrieved: int
+    results: list[RetrivedChunk]

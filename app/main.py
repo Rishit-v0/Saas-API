@@ -8,6 +8,7 @@ from .database import Base, engine
 from .routers import auth as auth_router
 from .routers import documents as documents
 from .routers import notes as notes_router
+from .routers import query as query_router
 from .routers import tenants as tenant_router
 
 
@@ -31,6 +32,7 @@ app.include_router(auth_router.router, prefix=f"{API_PREFIX}", tags=["Authentica
 app.include_router(tenant_router.router, prefix=f"{API_PREFIX}", tags=["Tenants"])
 app.include_router(notes_router.router, prefix=f"{API_PREFIX}", tags=["Notes"])
 app.include_router(documents.router, prefix=f"{API_PREFIX}", tags=["Documents"])
+app.include_router(query_router.router, prefix=f"{API_PREFIX}", tags=["Query"])
 
 
 @app.get("/health")
