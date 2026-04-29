@@ -128,7 +128,9 @@ def chunk_by_recursive_separators(
     for i, sep in enumerate(separators):
         if sep in text:
             chosen_seprator = sep
+            # fmt: off
             remaining_separators = separators[i+1:]
+            # fmt: on
             break
 
     splits = text.split(chosen_seprator) if chosen_seprator else [text]
@@ -290,8 +292,9 @@ def chunk_text(
             overlap=overlap or 50,
         )
     else:
-        raise ValueError(f"Unknown chunking strategy: {strategy}"
-                         f"\nChoose from token/recursive/semantic/character")
+        raise ValueError(
+            f"Unknown chunking strategy: {strategy}\nChoose from token/recursive/semantic/character"
+        )
 
 
 # ── Embedding Functions ─────────────────────────────────────────────────────────────
