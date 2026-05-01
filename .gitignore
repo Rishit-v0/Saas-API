@@ -22,5 +22,6 @@ terraform/.terraform.lock.hcl
 .coverage
 htmlcov/
 
+
 chroma_data/
-*.chroma
+*.sqlite3
