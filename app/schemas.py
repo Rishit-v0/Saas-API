@@ -177,3 +177,21 @@ class QueryResponse(BaseModel):
     tenant_slug: str
     chunks_retrieved: int
     results: list[RetrivedChunk]
+
+
+# ── Answer Schema ───────────────────────────────────────────────────────
+class SourceCitation(BaseModel):
+    document_title: str
+    chunk_preview: str
+    relevance_score: float
+    document_id: int
+    chunk_index: int
+
+
+class AnswerResponse(BaseModel):
+    question: str
+    answer: str
+    sources: list[SourceCitation]
+    chunks_used: int
+    model: str
+    tenant_slug: str

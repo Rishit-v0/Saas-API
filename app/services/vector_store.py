@@ -60,8 +60,10 @@ def get_collection(tenant_slug: str) -> chromadb.Collection:
     """
     client = get_chroma_client()
     collection_name = f"tenant_{tenant_slug.replace('-', '_')}"
+
     return client.get_or_create_collection(
-        name=collection_name, metadata={"tenant_slug": tenant_slug}
+        name=collection_name,
+        metadata={"tenant_slug": tenant_slug, "hnsw:space": "cosine"},
     )
 
 

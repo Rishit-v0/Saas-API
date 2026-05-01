@@ -5,11 +5,59 @@ This is the retrieval layer of the RAG pipeline:
 """
 
 from fastapi import APIRouter, Depends  # HTTPException, status
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 from sqlalchemy.orm import Session
 
 from .. import auth, models, schemas
 from ..database import get_db
 from ..services.vector_store import query_documents
+
+RAG_MODEL = "gpt-5-nano"
+
+RAG_SYSTEM_PROMPT = """
+You are a helpful assistant that answers questions based strictly on the provided context documents.
+
+STRICT RULES:
+- Answer ONLY using information present in the context below
+- If the context does not contain sufficient information, respond with exactly:
+  "I don't have enough information to answer this question."
+- Do NOT use knowledge from your training data
+- Do NOT fabricate facts or details not in the context
+- Reference sources using their label e.g. [Source 1] when relevant
+- Be concise and accurate
+
+Context:
+{context}
+"""
+
+
+def _build_rag_chain():
+    llm = ChatOpenAI(
+        model=RAG_MODEL,
+        temperature=0.0,
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", RAG_SYSTEM_PROMPT),
+            ("human", "{question}"),
+        ]
+    )
+
+    return prompt | llm | StrOutputParser()
+
+
+def _format_context(chunks: list[dict]) -> str:
+    if not chunks:
+        return "No relevant context found."
+    parts = []
+    for i, chunk in enumerate(chunks, start=1):
+        title = chunk.get("metadata", {}).get("title", "Document")
+        parts.append(f"[Source {i} - {title}]:\n{chunk['text']}")
+
+    return "\n\n".join(parts)
+
 
 router = APIRouter(
     prefix="/tenants/{slug}/query",
@@ -129,3 +177,61 @@ async def explain_query(
             ),
         },
     }
+
+
+@router.post("/answer", response_model=schemas.AnswerResponse)
+async def answer_question(
+    slug: str,
+    query_in: schemas.QueryRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    # 1. Auth check
+    auth.get_tenant_or_404(
+        db,
+        slug=slug,
+        current_user=current_user,
+        required_role=models.UserRole.MEMBER,
+    )
+
+    # 2. Retrieve relevant chunks
+    raw_chunks = query_documents(
+        tenant_slug=slug,
+        query=query_in.question,
+        top_k=query_in.top_k,
+    )
+
+    MIN_SCORE = 0.1
+    raw_chunks = [chunk for chunk in raw_chunks if chunk["score"] >= MIN_SCORE]
+
+    # 3. Format context for RAG model
+    context = _format_context(raw_chunks)
+
+    # 4. Build RAG chain and get answer
+    chain = _build_rag_chain()
+
+    answer_text = chain.invoke({"context": context, "question": query_in.question})
+
+    # 5. Format sources for response
+    sources = []
+    for chunk in raw_chunks:
+        meta = chunk.get("metadata", {})
+        sources.append(
+            schemas.SourceCitation(
+                document_title=meta.get("title", "Document"),
+                chunk_preview=chunk["text"][:100]
+                + ("..." if len(chunk["text"]) > 100 else ""),
+                relevance_score=chunk["score"],
+                document_id=meta.get("document_id", ""),
+                chunk_index=int(meta.get("chunk_index", -1)),
+            )
+        )
+
+    return schemas.AnswerResponse(
+        question=query_in.question,
+        answer=answer_text,
+        sources=sources,
+        chunks_used=len(raw_chunks),
+        model=RAG_MODEL,
+        tenant_slug=slug,
+    )
