@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import auth, models, schemas
 from ..database import get_db
-from ..services.vector_store import query_documents
+from ..services.vector_store import query_documents, rerank_chunks
 
 RAG_MODEL = "gpt-5-nano"
 
@@ -195,35 +195,45 @@ async def answer_question(
     )
 
     # 2. Retrieve relevant chunks
+    candidate_count = max(query_in.top_k * 4, 20)
     raw_chunks = query_documents(
         tenant_slug=slug,
         query=query_in.question,
-        top_k=query_in.top_k,
+        top_k=candidate_count,
     )
 
-    MIN_SCORE = 0.1
-    raw_chunks = [chunk for chunk in raw_chunks if chunk["score"] >= MIN_SCORE]
+    if not raw_chunks:
+        return schemas.AnswerResponse(
+            question=query_in.question,
+            answer="I don't have enough information to answer this question.",
+            sources=[],
+            chunks_used=0,
+            model=RAG_MODEL,
+            tenant_slug=slug,
+        )
 
-    # 3. Format context for RAG model
-    context = _format_context(raw_chunks)
+    reranked_chunks = rerank_chunks(
+        query=query_in.question,
+        chunks=raw_chunks,
+        top_n=query_in.top_k,
+    )
 
-    # 4. Build RAG chain and get answer
+    context = _format_context(reranked_chunks)
+
     chain = _build_rag_chain()
-
     answer_text = chain.invoke({"context": context, "question": query_in.question})
 
-    # 5. Format sources for response
     sources = []
-    for chunk in raw_chunks:
+    for chunk in reranked_chunks:
         meta = chunk.get("metadata", {})
         sources.append(
             schemas.SourceCitation(
                 document_title=meta.get("title", "Document"),
                 chunk_preview=chunk["text"][:100]
                 + ("..." if len(chunk["text"]) > 100 else ""),
-                relevance_score=chunk["score"],
+                relevance_score=chunk.get("reranked_score", chunk.get("score", 0)),
                 document_id=meta.get("document_id", ""),
-                chunk_index=int(meta.get("chunk_index", -1)),
+                chunk_index=int(meta.get("chunk_index", 0)),
             )
         )
 
@@ -231,7 +241,7 @@ async def answer_question(
         question=query_in.question,
         answer=answer_text,
         sources=sources,
-        chunks_used=len(raw_chunks),
+        chunks_used=len(reranked_chunks),
         model=RAG_MODEL,
         tenant_slug=slug,
     )

@@ -81,6 +81,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }} # Set the default password
           POSTGRES_DB: ${{ secrets.DATABASE_NAME }} # Set the default database name
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
 
         # Health check command to ensure PostgreSQL is ready before running tests
         # Check every 10 seconds

@@ -4,6 +4,7 @@ import re
 from typing import Optional
 
 import chromadb
+import cohere as cohere_sdk
 import numpy as np
 import tiktoken
 from chromadb.config import Settings
@@ -458,3 +459,64 @@ def get_collection_stats(tenant_slug: str) -> dict:
         "tenant_slug": tenant_slug,
         "total_chunks": collection.count(),
     }
+
+
+# ──────  Reranking function ───────────────────────────────────────────────────────
+def rerank_chunks(
+    query: str,
+    chunks: list[dict],
+    top_n: int = 5,
+) -> list[dict]:
+    """
+    Rerank retrieved chunks using Cohere's cross-encoder reranker.
+
+    Why reranking improves quality over pure embedding similarity:
+    - Embedding similarity compares query and chunk independently
+    - Cross-encoder sees query + chunk TOGETHER — models their interaction
+    - Much more accurate relevance scoring, especially for nuanced questions
+
+    Standard production pattern:
+      retrieve top-20 via embeddings (fast, cheap)
+          → rerank top-20 with Cohere (accurate, slightly expensive)
+          → use top-5 after reranking for LLM context
+
+    Cost: ~$0.001 per 1000 documents reranked.
+    Free tier: 1000 API calls/month — sufficient for development.
+
+    Falls back gracefully if Cohere API is unavailable — returns
+    original chunks sorted by embedding score so the endpoint
+    never fails completely due to reranking unavailability.
+    """
+    if not chunks:
+        return []
+
+    cohere_api_key = os.getenv("COHERE_API_KEY")
+    if not cohere_api_key:
+        return chunks[:top_n]
+
+    try:
+        co = cohere_sdk.Client(api_key=cohere_api_key)
+        documents = [chunk["text"] for chunk in chunks]
+
+        response = co.rerank(
+            model="rerank-english-v3.0",
+            query=query,
+            documents=documents,
+            top_n=top_n,
+        )
+
+        reranked = []
+        for result in response.results:
+            reranked_chunk = {
+                **chunks[result.index],
+                "rerank_score": round(result.relevance_score, 4),
+                "original_embedding_score": chunks[result.index].get("score", 0),
+            }
+            reranked.append(reranked_chunk)
+        return reranked
+
+    except Exception as e:
+        print(
+            f"Reranking failed, returning original chunks. Falling back to embedding order : {e}"
+        )
+        return chunks[:top_n]
