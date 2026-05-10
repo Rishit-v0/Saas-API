@@ -18,3 +18,4 @@ tiktoken>=0.12.0
 langchain-openai
 langchain-core
 cohere
+langchain

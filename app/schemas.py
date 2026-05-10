@@ -195,3 +195,24 @@ class AnswerResponse(BaseModel):
     chunks_used: int
     model: str
     tenant_slug: str
+
+
+# ── Agent Schemas ───────────────────────────────────────────────────────────────
+class AgentRequest(BaseModel):
+    message: str
+    stream: bool = False
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(cls, v: str) -> str:
+        if not v or len(v.strip()) < 2:
+            raise ValueError("Message must be at least 2 characters!")
+        return v.strip()
+
+
+class AgentResponse(BaseModel):
+    message: str
+    answer: str
+    tools_used: list[str]
+    iterations: int
+    tenant_slug: str

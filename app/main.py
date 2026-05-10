@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.middleware.rate_limit import RateLimitMiddleware
 
 from .database import Base, engine
+from .routers import agent as agent_router
 from .routers import auth as auth_router
 from .routers import documents as documents
 from .routers import notes as notes_router
@@ -33,6 +34,7 @@ app.include_router(tenant_router.router, prefix=f"{API_PREFIX}", tags=["Tenants"
 app.include_router(notes_router.router, prefix=f"{API_PREFIX}", tags=["Notes"])
 app.include_router(documents.router, prefix=f"{API_PREFIX}", tags=["Documents"])
 app.include_router(query_router.router, prefix=f"{API_PREFIX}", tags=["Query"])
+app.include_router(agent_router.router, prefix=f"{API_PREFIX}", tags=["Agent"])
 
 
 @app.get("/health")
