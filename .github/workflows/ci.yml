@@ -184,6 +184,17 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine 
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
     steps:
       # Step 1: Check out your code onto the runner VM
       - name: Checkout code
@@ -216,7 +227,6 @@ jobs:
           docker run -d \
             --name saas-test \
             -p 8000:8000 \
-            -e "DATABASE_URL=postgresql://${{ secrets.DATABASE_USER }}:${{ secrets.DATABASE_PASSWORD }}@172.17.0.1:5432/${{ secrets.DATABASE_NAME }}" \
             -e "DATABASE_HOST=172.17.0.1" \
             -e "DATABASE_PORT=5432" \
             -e "DATABASE_USER=${{ secrets.DATABASE_USER }}" \
