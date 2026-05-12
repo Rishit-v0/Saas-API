@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -13,9 +13,9 @@ from .routers import notes as notes_router
 from .routers import query as query_router
 from .routers import tenants as tenant_router
 
-
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 IS_PRODUCTION = ENVIRONMENT == "production"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
