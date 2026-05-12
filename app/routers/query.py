@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends  # HTTPException, status
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langsmith import get_current_run_tree, traceable
 from sqlalchemy.orm import Session
 
 from .. import auth, models, schemas
@@ -134,6 +135,84 @@ async def query_tenant_documents(
     )
 
 
+@traceable(
+    name="retrieve_and_rerank",
+)
+def retrieve_and_rerank(
+    tenant_slug: str,
+    question: str,
+    top_k: int = 5,
+) -> list[dict]:
+    """
+    Traced retrieval + reranking step.
+    In LangSmith you'll see:
+    - How many candidates were retrieved
+    - Which chunks passed the reranker
+    - Time taken for embedding + ChromaDB search + Cohere rerank
+    """
+    candidate_count = max(top_k * 4, 20)
+    raw_chunks = query_documents(
+        tenant_slug=tenant_slug,
+        query=question,
+        top_k=candidate_count,
+    )
+
+    if not raw_chunks:
+        return []
+
+    reranked = rerank_chunks(
+        query=question,
+        chunks=raw_chunks,
+        top_n=top_k,
+    )
+
+    return reranked
+
+
+@traceable(
+    name="rag_answer_pipeline",
+    tags=["rag", "production"],
+)
+def run_rag_pipeline(
+    tenant_slug: str,
+    question: str,
+    top_k: int,
+    user_id: int = None,
+) -> dict:
+    """
+    Full traced RAG pipeline.
+    In LangSmith you'll see this as the top-level span containing:
+      1. retrieve_and_rerank (child span)
+      2. LLM generation chain (child span, auto-traced by LangChain)
+    """
+    run = get_current_run_tree()
+    if run:
+        run.metadata = {
+            "tenant_slug": tenant_slug,
+            "top_k": top_k,
+            "user_id": str(user_id) if user_id else None,
+            "question_length": len(question),
+        }
+
+    chunks = retrieve_and_rerank(
+        tenant_slug=tenant_slug,
+        question=question,
+        top_k=top_k,
+    )
+    context = _format_context(chunks)
+    chain = _build_rag_chain()
+    answer = chain.invoke(
+        {
+            "context": context,
+            "question": question,
+        }
+    )
+    return {
+        "answer": answer,
+        "chunks": chunks,
+    }
+
+
 @router.post("/explain", response_model=dict)
 async def explain_query(
     slug: str,
@@ -194,15 +273,17 @@ async def answer_question(
         required_role=models.UserRole.MEMBER,
     )
 
-    # 2. Retrieve relevant chunks
-    candidate_count = max(query_in.top_k * 4, 20)
-    raw_chunks = query_documents(
+    pipeline_result = run_rag_pipeline(
         tenant_slug=slug,
-        query=query_in.question,
-        top_k=candidate_count,
+        question=query_in.question,
+        top_k=query_in.top_k,
+        user_id=current_user.id,
     )
 
-    if not raw_chunks:
+    reranked_chunks = pipeline_result["chunks"]
+    answer_text = pipeline_result["answer"]
+
+    if not reranked_chunks:
         return schemas.AnswerResponse(
             question=query_in.question,
             answer="I don't have enough information to answer this question.",
@@ -211,17 +292,6 @@ async def answer_question(
             model=RAG_MODEL,
             tenant_slug=slug,
         )
-
-    reranked_chunks = rerank_chunks(
-        query=query_in.question,
-        chunks=raw_chunks,
-        top_n=query_in.top_k,
-    )
-
-    context = _format_context(reranked_chunks)
-
-    chain = _build_rag_chain()
-    answer_text = chain.invoke({"context": context, "question": query_in.question})
 
     sources = []
     for chunk in reranked_chunks:

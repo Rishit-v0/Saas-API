@@ -19,3 +19,4 @@ langchain-openai
 langchain-core
 cohere
 langchain
+langsmith
