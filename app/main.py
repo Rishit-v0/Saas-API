@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 
@@ -13,6 +14,9 @@ from .routers import query as query_router
 from .routers import tenants as tenant_router
 
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
@@ -24,6 +28,7 @@ app = FastAPI(
     lifespan=lifespan,
     description="AI-powered multi-tenant SaaS backend",
     version="0.1.0",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
 )
 
 
