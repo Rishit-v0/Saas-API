@@ -3,18 +3,21 @@ from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from langchain.agents import create_agent
-from langchain.agents.middleware import ToolCallLimitMiddleware
-from langchain_core.messages import AIMessage, ToolMessage  # HumanMessage
+
+# from langchain.agents import create_agent
+# from langchain.agents.middleware import ToolCallLimitMiddleware
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage  # HumanMessage
 
 # from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import InMemorySaver
+
+# from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.orm import Session
 
 from .. import auth, models, schemas
 from ..database import get_db
+from ..services.agent_graph import build_saas_agent_graph  # SaaSAgentState,
 from ..services.vector_store import query_documents
 
 router = APIRouter(
@@ -145,38 +148,55 @@ def create_tenant_tools(tenant_slug: str, db: Session):
     return [search_tenant_documents, get_tenant_stats, list_recent_notes]
 
 
-checkpointer = InMemorySaver()
+checkpointer = MemorySaver()
+
+
+# def build_agent_executor(tenant_slug: str, db: Session):
+#     """
+#     Build an agent executor for a specific tenant.
+#     The agent will have access to tools that are scoped to this tenant.
+#     """
+#     llm = ChatOpenAI(model=AGENT_MODEL, temperature=0)
+#     tools = create_tenant_tools(tenant_slug, db)
+
+#     system_prompt = f"""You are an intelligent assistant for tenant '{tenant_slug}'.
+# You help users find information and understand their data.
+
+# You have access to:
+# - search_tenant_documents: semantic search over this tenant's documents
+# - get_tenant_stats: database statistics for this tenant
+# - list_recent_notes: recent notes in this tenant
+
+# Rules:
+# - Only access data for tenant '{tenant_slug}' — never other tenants
+# - Use tools when you need current data, not for general knowledge questions
+# - Be concise — answer the question directly after gathering data
+# - If tools return no results, say so honestly"""
+#     return create_agent(
+#         model=llm,
+#         tools=tools,
+#         system_prompt=system_prompt,
+#         checkpointer=checkpointer,
+#         middleware=[
+#             ToolCallLimitMiddleware(run_limit=5, exit_behavior="continue"),
+#         ],
+#     )
 
 
 def build_agent_executor(tenant_slug: str, db: Session):
-    """
-    Build an agent executor for a specific tenant.
-    The agent will have access to tools that are scoped to this tenant.
-    """
-    llm = ChatOpenAI(model=AGENT_MODEL, temperature=0)
+    """Build explicit LangGraph agent for this tenant."""
     tools = create_tenant_tools(tenant_slug, db)
 
-    system_prompt = f"""You are an intelligent assistant for tenant '{tenant_slug}'.
-You help users find information and understand their data.
+    system_prompt = (
+        f"You are an intelligent assistant for tenant '{tenant_slug}'. "
+        f"Use tools to answer questions about data. Be concise and direct."
+    )
 
-You have access to:
-- search_tenant_documents: semantic search over this tenant's documents
-- get_tenant_stats: database statistics for this tenant
-- list_recent_notes: recent notes in this tenant
-
-Rules:
-- Only access data for tenant '{tenant_slug}' — never other tenants
-- Use tools when you need current data, not for general knowledge questions
-- Be concise — answer the question directly after gathering data
-- If tools return no results, say so honestly"""
-    return create_agent(
-        model=llm,
+    return build_saas_agent_graph(
         tools=tools,
         system_prompt=system_prompt,
+        max_tool_calls=5,
         checkpointer=checkpointer,
-        middleware=[
-            ToolCallLimitMiddleware(run_limit=5, exit_behavior="continue"),
-        ],
     )
 
 
@@ -199,9 +219,15 @@ async def run_agent(
     agent_executor = build_agent_executor(slug, db)
 
     config = {"configurable": {"thread_id": f"{slug}_{current_user.id}"}}
-    result = agent_executor.invoke(
-        {"messages": [{"role": "user", "content": request.message}]}, config=config
-    )
+
+    initial_state = {
+        "messages": [HumanMessage(content=request.message)],
+        "tool_call_count": 0,
+        "max_tool_calls": 5,
+        "tenant_slug": slug,
+    }
+
+    result = agent_executor.invoke(initial_state, config=config)
 
     all_messages = result.get("messages", [])
 
@@ -212,13 +238,17 @@ async def run_agent(
         else "No answer generated."
     )
 
-    tools_used = extract_tools_used(result["messages"])
+    tools_used = [
+        msg.name
+        for msg in all_messages
+        if isinstance(msg, ToolMessage) and hasattr(msg, "name")
+    ]
 
     return schemas.AgentResponse(
         message=request.message,
         answer=answer,
         tools_used=tools_used,
-        iterations=len(tools_used),
+        iterations=result.get("tool_call_count", 0),
         tenant_slug=slug,
     )
 
